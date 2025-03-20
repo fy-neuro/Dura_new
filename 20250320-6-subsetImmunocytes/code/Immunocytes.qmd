@@ -1,0 +1,221 @@
+##subset
+```{r}
+sobj <- sobj
+sobj.subset <- subset(sobj, idents = c(
+  # 免疫细胞
+  "T cells", "NK cells", "ILCs",                # 淋巴细胞
+  "B cells", "Plasmblast",                       # B细胞系
+  "Monocytes", "Macrophages", "Microglia",       # 髓系
+  "Neutrophils", "Granulocytes", "Mast cells"
+))
+
+sobj <- sobj.subset
+```
+
+
+##recluster
+```{r}
+
+# sobj <- JoinLayers(sobj)
+reduction_name<-"harmony"
+
+sobj <- NormalizeData(sobj)
+
+sobj <- FindVariableFeatures(sobj)
+
+sobj <- ScaleData(sobj)
+
+sobj <- RunPCA(sobj, features = VariableFeatures(object = sobj))
+sobj <- RunHarmony(sobj,group.by.vars="orig.ident", reduction.use = "pca")
+
+dir.create("../plot", showWarnings = FALSE)
+Cairo::CairoPNG(filename = "../plot/Heatmap.png", width = 5000, height = 5000, units = "px", dpi = 300)
+DimHeatmap(sobj, dims = 1:30, cells = 500, balanced = TRUE,reduction = "harmony")
+dev.off()
+
+# Further analysis steps
+# sobj <- FindNeighbors(sobj, reduction = reduction_name, dims = 1:20)
+# sobj <- FindClusters(sobj, resolution = seq(0.1, 1, 0.1))
+sobj <- RunUMAP(sobj, dims = 1:20, reduction = reduction_name)
+
+```
+
+##UMAP
+```{r}
+DimPlot(sobj, 
+        group.by = "class",
+        cols = cell_colors,
+        label = TRUE,
+        repel = TRUE) + 
+  scale_color_manual(values = cell_colors)
+
+# 生成绘图
+# p <- plot_umap(sobj, cell_colors)
+ggsave("../plot/celltype_umap.pdf", width = 10, height = 8)
+```
+
+##Heatmap
+
+```{r}
+ordered_celltypes <- c(
+  # 免疫细胞
+  "T cells", "NK cells", "ILCs",                # 淋巴细胞
+  "B cells", "Plasmblast",                       # B细胞系
+  "Monocytes", "Macrophages", "Microglia",       # 髓系
+  "Neutrophils", "Granulocytes", "Mast cells"   # 粒细胞
+  
+  # # 非免疫细胞
+  # "Mesenchymal cells", "Epithelial cells",       # 基质/上皮
+  # "Erythroid cells",                             # 红细胞系
+  # "Astrocytes", "Pericytes",                     # 神经相关
+  # 
+  # # 其他
+  # "Shallow"
+)
+
+ordered_sample <-c(
+  "wt3m","wt4m","a53t4m","wt8m","a53t8m","wt12m","wt12mc","a53t12m"
+)
+sobj$orig.ident <- factor(sobj$orig.ident, levels = ordered_sample)
+```
+
+```{r}
+marker_genes <- list(
+  # 淋巴细胞
+  "T cells" = c("Cd3d", "Cd3e", "Cd8a", "Cd4", "Il7r", "Lef1"),  # CD3复合物和T细胞受体相关[1,3](@ref)
+  "NK cells" = c("Nkg7", "Gzmb", "Prf1", "Klrd1"),     # GNLY在小鼠中无直系同源，替换为颗粒酶Gzmb[1](@ref)
+  "ILCs" = c( "Il7r", "Il2ra", "Gata3","Ltb"),             # 固有淋巴样细胞特征基因[1](@ref)
+  
+  # B细胞谱系
+  "B cells" = c("Cd19", "Cd79a", "Ms4a1", "Bank1", "Bank1"),     # MS4A1对应小鼠CD20[1](@ref)
+  "Plasmblast" = c("Sdc1", "Prdm1", "Xbp1", "Mzb1", "Jchain"),  # 浆母细胞分化标志[1](@ref)
+  
+  # 髓系细胞
+  "Monocytes" = c("Csf1r", "Tnfsf9", "Lyz"),  # FCGR3A对应小鼠Fcgr3[3](@ref)
+  "Macrophages" = c("Lyve1", "Cd163", "Mrc1", "Mafb"),   # MRC1即甘露糖受体[3](@ref)
+  "Microglia" = c("Tmem119", "P2ry12", "Cx3cr1", "Pf4", "Gpr34"), # 中枢神经特异性标记[3](@ref)
+  
+  # 粒细胞
+  "Neutrophils" = c("Retnlg", "Acod1", "Mmp9", "Ly6g"), 
+  "Granulocytes" = c("Elane", "Azu1", "Mpo", "Prtn3", "Ctsg"),  # 颗粒酶相关基因[3](@ref)
+  "Mast cells" = c("Tpsab1", "Cpa3", "Gata2", "Ms4a2")   # 肥大细胞特征基因[3](@ref)
+  # 
+  # # 基质/组织细胞
+  # "Mesenchymal cells" = c("Col1a1", "Col3a1", "Dcn", "Lum", "Pdgfra"), # 间充质基质标记[4](@ref)
+  # "Epithelial cells" = c("Epcam", "Krt18", "Krt19", "Cdh1", "Cldn7"),
+  # "Erythroid cells" = c("Hba-a1", "Hbb-bs", "Gypa", "Alas2", "Klf1"),  # 小鼠血红蛋白亚型特殊命名[3](@ref)
+  # "Astrocytes" = c("Gfap", "Aqp4", "Slc1a3", "Slc1a2", "Aldh1l1"),    # 星形胶质细胞标记[3](@ref)
+  # "Pericytes" = c("Pdgfrb", "Rgs5", "Cspg4", "Acta2", "Kcnj8"),       # 周细胞特征基因[3,4](@ref)
+  # 
+  # # 质量控制
+  # "Shallow" = c("Malat1", "Neat1", "Xist")  # 非特异性核RNA标记[3](@ref)
+)
+```
+
+```{r}
+
+
+
+# 步骤1：设置细胞类型顺序
+sobj$class <- factor(sobj$class, levels = ordered_celltypes)
+Markers <-marker_genes %>%unlist
+Idents(sobj)<-"class"
+sobj.scale<-ScaleData(subset(sobj,downsample=200),features=Markers)
+Heatmap<-DoHeatmap(sobj.scale
+                   ,features = Markers
+                   # ,group.colors = cell_colors
+                   ) + 
+  scale_fill_gradientn(colors = c("white","grey","firebrick3"))+
+  NoLegend()
+ggsave(filename =  paste0("../plot/","marker_Heatmap",".png"),plot = Heatmap,device = "png",width=5000,height = 5000,dpi = 300,units = "px")
+
+```
+
+##Proportion
+```{r}
+
+cell_number<-(prop.table(table(sobj$class,sobj$orig.ident),margin = 2)*100)%>%
+  round(digits = 2)
+cell_number<-as.data.frame(cell_number)
+
+colnames(cell_number)<-c('celltype','Group','percentage')
+
+cell_number$Group <- factor(cell_number$Group, levels = ordered_sample)
+
+
+p <- ggplot(cell_number, aes(x = celltype, 
+                            y = percentage,
+                            fill = Group)) +
+  geom_bar(position = position_dodge(0.85), # 微调分组间距
+           stat = "identity", 
+           width = 0.75, # 调整柱子宽度
+           color = "white", # 添加白色边框
+           linewidth = 0.3) + # 边框细线
+  geom_text(aes(label = percentage), # 添加数值标签
+            position = position_dodge(0.75),
+            vjust = -0.5, 
+            size = 1, 
+            color = "black") +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.1))) + # 优化坐标轴空白
+  labs(x = "Cell Type", 
+       y = "Percentage (%)",
+       title = "Cell Type Proportion by Group") +
+  theme_minimal(base_size = 12) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, face = "bold"),
+    plot.title = element_text(hjust = 0.5, size = 14),
+    legend.position = "top",
+    panel.grid.major.x = element_blank()
+  )
+mycol <- c("#4d97cd", "#db6968", "#99cbeb", "#459943",
+           "#fdc58f", "#e8c559", "#a3d393", "#f8984e")
+p + scale_fill_manual(values = mycol)
+
+ggsave(filename = "../plot/Cellratio_type_dodge.png",
+       device = "png", 
+       width = 25,  # 改用厘米单位更直观
+       height = 15, 
+       bg = "white",
+       units = "cm",
+       dpi = 600) # 提高分辨率
+```
+
+```{r}
+library(ggsci)
+mycol <- pal_d3("category10")(8) # 取D3.js前8色
+p + scale_fill_manual(values = mycol)
+mycol <- c("#4d97cd", "#db6968", "#99cbeb", "#459943",
+           "#fdc58f", "#e8c559", "#a3d393", "#f8984e")
+p + scale_fill_manual(values = mycol)
+
+mycol <- c("#88C4E8","#4DB3D1","#A5D86D","#FED439",
+           "#EB7AA6","#D43F3A","#9369B0","#FEAE64")
+p + scale_fill_manual(values = mycol)
+```
+
+```{r}
+p <- ggplot(cell_number, aes(x = celltype, #给一个数值向量作为柱子x轴的中心坐标
+                            y = percentage,
+                            fill = Group  )) + #将颜色映射到celltype
+  geom_bar(position = "dodge", stat="identity", color = NA, width = 0.8)
+# geom_col(width = 1.5, #柱形图柱子宽度
+#          color = 'white') 
+p
+
+# p1<-p+scale_fill_manual(values = mycol) +
+#   scale_y_continuous(expand = c(0,0)) +
+#   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+# p1
+
+ggsave(filename =paste0("../plot/","Cellratio_type_dodge.png"),device = "png",width=4000,height = 2500,dpi = 200,units = "px" )
+
+```
+
+
+##save
+```{r}
+dir.create("../Documents", showWarnings = FALSE)
+save(sobj,file = "../Documents/Immunocytes0320.rds")
+create_loupe_from_seurat(sobj,output_name = "../Documents/Immunocytes0320")
+```
+

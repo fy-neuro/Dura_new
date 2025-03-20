@@ -1,0 +1,96 @@
+```{r}
+library(Seurat)
+library(SeuratData)
+library(SeuratWrappers)
+library(patchwork)
+library(tidyverse)
+library(loupeR)
+library(harmony)
+```
+
+
+##load data
+```{r}
+# Read the Seurat object
+sobj <- sobj <- readRDS("../Documents/public+local0319.rds")
+sobj <- readRDS("../Documents/Dura0320.rds")
+```
+
+##recluster
+```{r}
+
+# sobj <- JoinLayers(sobj)
+reduction_name<-"harmony"
+
+sobj <- NormalizeData(sobj)
+
+sobj <- FindVariableFeatures(sobj)
+
+sobj <- ScaleData(sobj)
+
+sobj <- RunPCA(sobj, features = VariableFeatures(object = sobj))
+sobj <- RunHarmony(sobj,group.by.vars="orig.ident", reduction.use = "pca")
+
+Cairo::CairoPNG(filename = "../Heatmap.png", width = 5000, height = 5000, units = "px", dpi = 300)
+DimHeatmap(sobj, dims = 1:30, cells = 500, balanced = TRUE,reduction = "harmony")
+dev.off()
+```
+
+```{r}
+# Further analysis steps
+sobj <- FindNeighbors(sobj, reduction = reduction_name, dims = 1:20)
+sobj <- FindClusters(sobj, resolution = seq(0.1, 1, 0.1))
+sobj <- RunUMAP(sobj, dims = 1:20, reduction = reduction_name)
+
+```
+
+##Rename
+```{r}
+# 创建细胞类型命名向量
+cluster_names <- c(
+  "0"  = "Neutrophils",
+  "1"  = "Neutrophils",
+  "2"  = "T cells",
+  "3"  = "Monocytes",
+  "4"  = "B cells",
+  "5"  = "B cells",
+  "6"  = "Microglia",
+  "7"  = "Shallow",
+  "8"  = "Shallow",
+  "9"  = "NK cells",
+  "10" = "B cells",
+  "11" = "Granulocytes",
+  "12" = "Mesenchymal cells",
+  "13" = "Macrophages",
+  "14" = "Astrocytes",
+  "15" = "ILCs",
+  "16" = "Neutrophils",
+  "17" = "Granulocytes",
+  "18" = "Erythroid cells",
+  "19" = "Plasmblast",
+  "20" = "Mast cells",
+  "21" = "Neutrophils",
+  "22" = "T cells",
+  "23" = "Microglia",
+  "24" = "Epithelial cells",
+  "25" = "Pericytes"
+)
+```
+
+
+```{r}
+# 方法1：直接添加到metadata
+sobj$class <- plyr::mapvalues(
+  x = sobj@meta.data$RNA_snn_res.0.5,  # 替换成你的聚类结果列名
+  from = names(cluster_names),
+  to = as.character(cluster_names)
+)
+Idents(sobj) <- "class"
+```
+
+
+```{r}
+saveRDS(sobj, "../Documents/Dura0320.rds")
+create_loupe_from_seurat(sobj,output_name = "../Documents/Dura0320")
+```
+

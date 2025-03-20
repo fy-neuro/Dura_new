@@ -1,0 +1,171 @@
+```{r}
+# 按层级结构分类
+cell_hierarchy <- list(
+  "免疫细胞" = list(
+    "T/NK/ILC" = c("T cells", "NK cells", "ILCs"),
+    "B/Plasm" = c("B cells", "Plasmblast"),
+    "Myeloid" = c("Monocytes", "Macrophages", "Microglia"),
+    "Granulocytes" = c("Neutrophils", "Granulocytes", "Mast cells")
+  ),
+  "非免疫细胞" = list(
+    "间充质" = "Mesenchymal cells",
+    "上皮" = "Epithelial cells",
+    "红细胞" = "Erythroid cells",
+    "胶质" = "Astrocytes",
+    "血管相关" = "Pericytes"
+  ),
+  "其他" = "Shallow"
+)
+```
+##配色
+```{r}
+# 修正后的英文版配色方案
+cell_colors <- c(
+  # 免疫细胞大类（冷色系）
+  # "T/NK/ILC" = "#6C8EBF",  # 主蓝
+  "T cells" = "#4A6FA5",
+  "NK cells" = "#7DA3D1",
+  "ILCs" = "#92B4E5",
+  
+  # "B/Plasm" = "#6AB187",  # 主绿
+  "B cells" = "#4D8C6D",
+  "Plasmblast" = "#88C2A0",
+  
+  # "Myeloid" = "#D9A066",  # 主橙
+  "Monocytes" = "#BF8040",
+  "Macrophages" = "#E6B88A",
+  "Microglia" = "#F0CBA8",
+  
+  # "Granulocytes" = "#9E77B3",  # 主紫
+  "Neutrophils" = "#7C5395",
+  "Granulocytes" = "#B38DC9",
+  "Mast cells" = "#CEB3DB",
+  
+  # 非免疫细胞大类（暖色系）
+  "Mesenchymal cells" = "#E87A90",  # 粉红
+  "Epithelial cells" = "#F4B3C2",    # 浅粉
+  "Erythroid cells" = "#B4654A",     # 土红
+  "Astrocytes" = "#5CC5D7",         # 青蓝
+  "Pericytes" = "#A1A1A1",          # 中性灰
+  
+  # 其他
+  "Shallow" = "#E0E0E0"            # 浅灰
+)
+
+# 验证颜色名称与metadata的class列一致
+stopifnot(all(names(cell_colors) %in% unique(sobj$class)))
+```
+
+```{r}
+library(Seurat)
+library(ggplot2)
+
+# # 创建分层标签
+# sobj$cell_category <- case_when(
+#   sobj$class %in% unlist(cell_hierarchy$免疫细胞) ~ "免疫细胞",
+#   sobj$class %in% unlist(cell_hierarchy$非免疫细胞) ~ "非免疫细胞",
+#   TRUE ~ "其他"
+# )
+
+# 主绘图函数
+# plot_umap <- function(object, colors) {
+#   DimPlot(object, 
+#           group.by = "class",
+#           cols = colors,
+#           pt.size = 0.5,
+#           order = TRUE) +  # 重要细胞类型前置
+#     theme_minimal() +
+#     theme(
+#       panel.background = element_rect(fill = "white", colour = NA),
+#       legend.key = element_rect(fill = "white", colour = NA),
+#       legend.text = element_text(size = 9),
+#       aspect.ratio = 1
+#     )
+# }
+DimPlot(sobj, 
+        group.by = "class",
+        cols = cell_colors,
+        label = TRUE,
+        repel = TRUE) + 
+  scale_color_manual(values = cell_colors)
+
+# 生成绘图
+# p <- plot_umap(sobj, cell_colors)
+ggsave("../plot/celltype_umap.pdf", width = 10, height = 8)
+```
+
+
+##Heatmap
+```{r}
+# 重新排列细胞类型顺序（基于生物学相似性）
+ordered_celltypes <- c(
+  # 免疫细胞
+  "T cells", "NK cells", "ILCs",                # 淋巴细胞
+  "B cells", "Plasmblast",                       # B细胞系
+  "Monocytes", "Macrophages", "Microglia",       # 髓系
+  "Neutrophils", "Granulocytes", "Mast cells",   # 粒细胞
+  
+  # 非免疫细胞
+  "Mesenchymal cells", "Epithelial cells",       # 基质/上皮
+  "Erythroid cells",                             # 红细胞系
+  "Astrocytes", "Pericytes",                     # 神经相关
+  
+  # 其他
+  "Shallow"
+)
+```
+
+```{r}
+marker_genes <- list(
+  # 淋巴细胞
+  "T cells" = c("Cd3d", "Cd3e", "Cd8a", "Cd4", "Il7r", "Lef1"),  # CD3复合物和T细胞受体相关[1,3](@ref)
+  "NK cells" = c("Nkg7", "Gzmb", "Prf1", "Klrd1"),     # GNLY在小鼠中无直系同源，替换为颗粒酶Gzmb[1](@ref)
+  "ILCs" = c( "Il7r", "Il2ra", "Gata3","Ltb"),             # 固有淋巴样细胞特征基因[1](@ref)
+  
+  # B细胞谱系
+  "B cells" = c("Cd19", "Cd79a", "Ms4a1", "Bank1", "Bank1"),     # MS4A1对应小鼠CD20[1](@ref)
+  "Plasmblast" = c("Sdc1", "Prdm1", "Xbp1", "Mzb1", "Jchain"),  # 浆母细胞分化标志[1](@ref)
+  
+  # 髓系细胞
+  "Monocytes" = c("Csf1r", "Tnfsf9", "Lyz"),  # FCGR3A对应小鼠Fcgr3[3](@ref)
+  "Macrophages" = c("Lyve1", "Cd163", "Mrc1", "Mafb"),   # MRC1即甘露糖受体[3](@ref)
+  "Microglia" = c("Tmem119", "P2ry12", "Cx3cr1", "Pf4", "Gpr34"), # 中枢神经特异性标记[3](@ref)
+  
+  # 粒细胞
+  "Neutrophils" = c("Retnlg", "Acod1", "Mmp9", "Ly6g"), 
+  "Granulocytes" = c("Elane", "Azu1", "Mpo", "Prtn3", "Ctsg"),  # 颗粒酶相关基因[3](@ref)
+  "Mast cells" = c("Tpsab1", "Cpa3", "Gata2", "Ms4a2"),    # 肥大细胞特征基因[3](@ref)
+  
+  # 基质/组织细胞
+  "Mesenchymal cells" = c("Col1a1", "Col3a1", "Dcn", "Lum", "Pdgfra"), # 间充质基质标记[4](@ref)
+  "Epithelial cells" = c("Epcam", "Krt18", "Krt19", "Cdh1", "Cldn7"),
+  "Erythroid cells" = c("Hba-a1", "Hbb-bs", "Gypa", "Alas2", "Klf1"),  # 小鼠血红蛋白亚型特殊命名[3](@ref)
+  "Astrocytes" = c("Gfap", "Aqp4", "Slc1a3", "Slc1a2", "Aldh1l1"),    # 星形胶质细胞标记[3](@ref)
+  "Pericytes" = c("Pdgfrb", "Rgs5", "Cspg4", "Acta2", "Kcnj8"),       # 周细胞特征基因[3,4](@ref)
+  
+  # 质量控制
+  "Shallow" = c("Malat1", "Neat1", "Xist")  # 非特异性核RNA标记[3](@ref)
+)
+```
+
+
+```{r}
+
+
+
+# 步骤1：设置细胞类型顺序
+# sobj$class <- factor(sobj$class, levels = ordered_celltypes)
+# Idents(sobj) <- "class"
+Markers <-marker_genes %>%unlist
+Idents(sobj)<-"class"
+sobj.scale<-ScaleData(subset(sobj,downsample=200),features=Markers)
+Heatmap<-DoHeatmap(sobj.scale
+                   ,features = Markers
+                   # ,group.colors = cell_colors
+                   ) + 
+  scale_fill_gradientn(colors = c("white","grey","firebrick3"))+
+  NoLegend()
+ggsave(filename =  paste0("../plot/","Heatmap",".png"),plot = Heatmap,device = "png",width=5000,height = 5000,dpi = 300,units = "px")
+
+```
+

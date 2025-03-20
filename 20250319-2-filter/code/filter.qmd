@@ -1,0 +1,40 @@
+
+```{r}
+
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(readr)
+library(cols4all)
+library(openxlsx)
+library(tibble)
+library(ggplot2)
+```
+
+##load data
+```{r}
+sobj <- sobj
+dir.create("../Documents")
+```
+
+##calculate decrease rate
+```{r}
+sobj.filtered <- subset(sobj, subset = nFeature_RNA > 300 & nFeature_RNA < 6000 & percent.mt < 5)
+sobj
+sobj.filtered
+```
+
+```{r}
+table(sobj$orig.ident)
+table(sobj.filtered$orig.ident)
+QCnumber<-cbind(table(sobj$orig.ident),table(sobj.filtered$orig.ident)) %>%as.data.frame
+names(QCnumber)<-c("before_QC","after_QC")
+
+QCnumber<-QCnumber %>%
+  mutate(percentagecut=(after_QC-before_QC)/before_QC *100)
+write.csv(QCnumber,"../Documents/QCnumber_mt300.csv")
+```
+```{r}
+saveRDS(sobj,"../Documents/local_7sample.rds")
+saveRDS(sobj.filtered,"../Documents/local_7sample_filtered.rds")
+```

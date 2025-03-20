@@ -1,0 +1,117 @@
+```{r}
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(readr)
+library(cols4all)
+library(ggplot2)
+library(openxlsx)
+library(tibble)
+library(loupeR)
+library(SeuratWrappers)
+library(harmony)
+```
+
+##load data
+```{r}
+dir.create("../Documents")
+filelist <- list.files(path = "E:/Durasequence/GEM_Data/PublicData_GSE174836")
+write.csv(filelist, file = "../Documents/filelist.csv")
+
+filelist <- read.csv("../Documents/filelist.csv")
+Directory <- filelist$file
+names <- filelist$Name
+names(Directory) <- names
+```
+
+
+
+
+```{r}
+# Dura_list <- list()
+i=3
+  
+Dura_Public<-CreateSeuratObject(counts = Read10X_h5(Directory[i]), project = names[i], min.cells = 3, min.features = 100)
+
+ Dura_Merged<-merge(sobj,Dura_Public)
+
+sobj <- Dura_Merged
+```
+
+##modify variables
+```{r}
+Meta.X <- sobj@meta.data %>%
+  rownames_to_column(var = "barcodes")
+
+# Meta.X <- Meta.X %>%
+#   mutate(orig.ident = ifelse(orig.ident=="wt3m3","wt3m",orig.ident)) %>%
+#   column_to_rownames(var = "barcodes") %>%
+#   mutate_if(is.character,as.factor)
+
+Meta.X <- Meta.X %>%
+  mutate_if(is.factor,as.character) %>%
+  mutate(Group = ifelse(is.na(Group),"WT",Group)) %>%
+  mutate(Age = ifelse(is.na(Age),"3M",Age)) %>%
+  mutate_if(is.character,as.factor)
+
+sobj@meta.data <- Meta.X
+```
+
+```{r}
+sobj$orig.ident <- factor(sobj$orig.ident,levels = c(
+  "wt3m" ,"wt4m" ,"a53t4m","wt8m" ,"a53t8m","wt12m","a53t12m","wt12mc"))
+  
+
+```
+
+
+##Number of Cells
+```{r}
+library(tidyplots)
+library(ggplot2)
+```
+
+```{r}
+Dataplot<-Meta.X %>%
+  group_by(orig.ident)%>%
+  summarise(
+    number = n(),
+    mean.reads=mean(nCount_RNA),
+    median.reads=median(nCount_RNA)
+  )%>% as.data.frame %>%
+  left_join(info_use,by="orig.ident") %>%
+      mutate(Group = ifelse(is.na(Group),"WT",Group)) %>%
+  mutate(Age = ifelse(is.na(Age),"3M",Age)) %>%
+  mutate_if(is.character,as.factor)
+
+Dataplot <- Dataplot %>%
+    mutate(Group = ifelse(is.na(Group),"WT",Group)) %>%
+  mutate(Age = ifelse(is.na(Age),"3M",Age))
+Dataplot$orig.ident <- factor(Dataplot$orig.ident,levels = c(
+  "wt3m" ,"wt4m" ,"a53t4m","wt8m" ,"a53t8m","wt12m","a53t12m","wt12mc"))
+write.xlsx(Dataplot,"../Documents/NumberofCells.xlsx")
+
+levels(Dataplot$orig.ident)
+```
+##cellnumber
+```{r}
+Dataplot %>%
+  tidyplot(x=orig.ident,y=number,fill=Group) %>%
+  add_mean_bar(alpha = 0.4)+ 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+ggsave(filename = "../plot/cellnumber.pdf")
+```
+
+##cellnumber
+```{r}
+Dataplot %>%
+  tidyplot(x=orig.ident,y=number,fill=Group) %>%
+  add_mean_bar(alpha = 0.4) %>% 
+  adjust_title("Cellnumber per sample") %>%
+  adjust_x_axis_title("Sample") %>%
+  adjust_y_axis_title("Number of Cells") %>%
+  adjust_x_axis(rotate_labels = 45) %>%
+  adjust_size(width = 100,height = 50) %>%
+  save_plot("../plot/cellnumber.png")
+ggsave(filename = "../plot/cellnumber_.pdf")
+```
