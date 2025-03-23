@@ -1,0 +1,66 @@
+##配色
+```{r}
+cell_colors_V2 <- c(
+  # 免疫细胞大类（冷色系）
+  "T cells"      = "#4A6FA5",    # 深蓝
+  "NK cells"     = "#7DA3D1",    # 中蓝
+  "ILCs"         = "#92B4E5",    # 浅蓝
+  
+  # B细胞谱系（绿色系）
+  "B cells"      = "#4D8C6D",    # 深绿
+  "Plasmblast"   = "#88C2A0",    # 浅绿
+  
+  # 髓系细胞（暖棕色系）
+  "Monocytes"    = "#BF8040",    # 深棕
+  "Macrophages"  = "#E6B88A",    # 浅棕（原色保留）
+  "cDCs"         = "#BF6F4E",    # 红棕（与Macrophages同系，更深）
+  "pDCs"         = "#D9885C",    # 橙棕（与Macrophages同系，稍浅）
+  "Microglia"    = "#F0CBA8",    # 米色（原色保留）
+  
+  # 粒细胞谱系（紫色系）
+  "Neutrophils"  = "#7C5395",    # 深紫
+  "Granulocytes" = "#B38DC9",    # 浅紫
+  "Mast cells"   = "#CEB3DB",    # 淡紫
+  
+  # 非免疫细胞（暖色系）
+  "Mesenchymal cells" = "#E87A90",  # 粉红
+  "Epithelial cells"   = "#F4B3C2",  # 浅粉
+  "Erythroid cells"    = "#B4654A",  # 土红
+  "Astrocytes"         = "#5CC5D7",  # 青蓝
+  "Pericytes"          = "#A1A1A1",  # 中性灰
+  
+  # 其他
+  "Shallow"            = "#E0E0E0"   # 浅灰
+  , "Neutrophils-Mix"  = "#A0A0A0"   # 混合中性灰
+)
+```
+
+
+```{r}
+# 绘制UMAP（Seurat版）
+DimPlot(sobj, 
+        group.by = "classV2",
+        cols = cell_colors_V2,
+        pt.size = 0.5,
+        label = TRUE,
+        order = c("pDCs", "cDCs", "Macrophages")  # 控制图层顺序
+)
+
+# 使用ggplot2精细调整（推荐）
+library(ggplot2)
+umap_df <- Embeddings(sobj, "umap") %>% 
+  as.data.frame() %>%
+  cbind(celltype = sobj@meta.data$classV2)
+
+ggplot(umap_df, aes(umap_1, umap_2, color = celltype)) +
+  geom_point(size = 0.8, alpha = 0.8) +
+  scale_color_manual(values = cell_colors_V2) +
+  theme_classic() +
+  guides(color = guide_legend(override.aes = list(size = 4)))  # 增大图例点
+
+ggsave("../plot/umap_celltype.pdf", width = 10, height = 8)
+```
+
+```{r}
+```
+

@@ -1,0 +1,64 @@
+##subset
+```{r}
+sobj <- sobj
+Idents(sobj) <- "classV2"
+sobj.subset <- subset(sobj, idents = c(
+  # 免疫细胞
+  # "T cells", "NK cells", "ILCs",                # 淋巴细胞
+  # "B cells", "Plasmblast",                       # B细胞系
+  "Monocytes", "Macrophages", "Microglia"      # 髓系
+  # "Neutrophils", "Granulocytes", "Mast cells"
+))
+
+sobj <- sobj.subset
+```
+
+##recluster
+```{r}
+# sobj <- JoinLayers(sobj)
+reduction_name<-"harmony"
+
+sobj <- NormalizeData(sobj)
+
+sobj <- FindVariableFeatures(sobj)
+
+sobj <- ScaleData(sobj)
+
+sobj <- RunPCA(sobj, features = VariableFeatures(object = sobj))
+sobj <- RunHarmony(sobj,group.by.vars="orig.ident", reduction.use = "pca")
+
+dir.create("../plot", showWarnings = FALSE)
+Cairo::CairoPNG(filename = "../plot/Heatmap.png", width = 5000, height = 5000, units = "px", dpi = 300)
+DimHeatmap(sobj, dims = 1:30, cells = 500, balanced = TRUE,reduction = "harmony")
+dev.off()
+```
+
+
+```{r}
+# Further analysis steps
+sobj <- FindNeighbors(sobj, reduction = reduction_name, dims = 1:15)
+sobj <- FindClusters(sobj, resolution = seq(0.1, 1, 0.1))
+sobj <- RunUMAP(sobj, dims = 1:15, reduction = reduction_name)
+
+```
+
+##UMAP
+```{r}
+DimPlot(sobj, 
+        group.by = "classV2",
+        cols = cell_colors_V2,
+        label = TRUE,
+        repel = TRUE) + 
+  scale_color_manual(values = cell_colors_V2)
+
+# 生成绘图
+# p <- plot_umap(sobj, cell_colors)
+ggsave("../plot/celltype_umap.pdf", width = 10, height = 8)
+```
+
+```{r}
+dir.create("../Documents", showWarnings = FALSE)
+create_loupe_from_seurat(sobj,output_name  = "../Documents/Macrophages0321",force = TRUE)
+saveRDS(sobj,"../Documents/Macrophages0321.rds")
+```
+

@@ -22,21 +22,21 @@ cell_hierarchy <- list(
 # 修正后的英文版配色方案
 cell_colors <- c(
   # 免疫细胞大类（冷色系）
-  # "T/NK/ILC" = "#6C8EBF",  # 主蓝
+
   "T cells" = "#4A6FA5",
   "NK cells" = "#7DA3D1",
   "ILCs" = "#92B4E5",
   
-  # "B/Plasm" = "#6AB187",  # 主绿
+
   "B cells" = "#4D8C6D",
   "Plasmblast" = "#88C2A0",
   
-  # "Myeloid" = "#D9A066",  # 主橙
+
   "Monocytes" = "#BF8040",
   "Macrophages" = "#E6B88A",
   "Microglia" = "#F0CBA8",
   
-  # "Granulocytes" = "#9E77B3",  # 主紫
+
   "Neutrophils" = "#7C5395",
   "Granulocytes" = "#B38DC9",
   "Mast cells" = "#CEB3DB",
@@ -128,8 +128,10 @@ marker_genes <- list(
   
   # 髓系细胞
   "Monocytes" = c("Csf1r", "Tnfsf9", "Lyz"),  # FCGR3A对应小鼠Fcgr3[3](@ref)
-  "Macrophages" = c("Lyve1", "Cd163", "Mrc1", "Mafb"),   # MRC1即甘露糖受体[3](@ref)
-  "Microglia" = c("Tmem119", "P2ry12", "Cx3cr1", "Pf4", "Gpr34"), # 中枢神经特异性标记[3](@ref)
+  "Macrophages" = c("Lyve1", "Cd163", "Mrc1", , "Pf4","Mafb"),   # MRC1即甘露糖受体[3](@ref)
+  "Microglia" = c("Tmem119", "P2ry12", "Cx3cr1" ,"Gpr34","Sparc","Trem2"), # 中枢神经特异性标记[3](@ref)
+  "cDCs" = c("Flt3", "Zbtb46", "Ccr7", "Xcr1", "Batf3","Clec9a"),  # 普通DC特征基因[3](@ref)
+  "pDCs" = c("Siglech", "Clec4c", "Irf7", "Irf8", "Tcf4","Bst2","Ccr9","Cadm1"),  # 基质细胞特征基因[3](@ref)
   
   # 粒细胞
   "Neutrophils" = c("Retnlg", "Acod1", "Mmp9", "Ly6g"), 

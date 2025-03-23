@@ -1,0 +1,78 @@
+```{r}
+library(Seurat)
+library(SeuratData)
+library(SeuratWrappers)
+library(patchwork)
+library(tidyverse)
+library(loupeR)
+library(harmony)
+```
+
+```{r}
+sobj <- readRDS("E:/Dura_new/20250320-6-subsetImmunocytes/Documents/Immunocytes0320.rds")
+```
+
+```{r}
+# 创建cluster与celltype的映射关系
+celltype_mapping <- c(
+  "0" = "B cells",
+  "1" = "B cells", 
+  "2" = "Monocytes",
+  "3" = "Neutrophils",
+  "4" = "Macrophages",
+  "5" = "Neutrophils",
+  "6" = "T cells",
+  "7" = "T cells",
+  "8" = "NK cells",
+  "9" = "Neutrophils",
+  "10" = "B cells",
+  "11" = "Neutrophils",
+  "12" = "Granulocytes",
+  "13" = "Macrophages",
+  "14" = "cDCs",
+  "15" = "ILCs",
+  "16" = "Granulocytes",
+  "17" = "Granulocytes",
+  "18" = "pDCs",
+  "19" = "B cells",
+  "20" = "Neutrophils-Mix",
+  "21" = "Plasmblast",
+  "22" = "Mast cells",
+  "23" = "Neutrophils",
+  "24" = "Microglia",
+  "25" = "T cells",
+  "26" = "Neutrophils-Mix",
+  "27" = "Macrophages",
+  "28" = "B cells",
+  "29" = "Neutrophils-Mix"
+)
+```
+
+```{r}
+
+# 方法二（推荐）：创建新metadata列
+sobj$classV2 <- plyr::mapvalues(
+  x = sobj$RNA_snn_res.1,
+  from = names(celltype_mapping),
+  to = unname(celltype_mapping)
+)
+Idents(sobj) <- "celltype"  # 设置为默认标识
+```
+
+```{r}
+# 检查映射完整性
+print(table(sobj$RNA_snn_res.1, sobj$classV2))
+
+# 可视化验证
+DimPlot(sobj, label = TRUE, group.by = "classV2") + 
+  theme(legend.position = "right")
+
+sobj$classV3 <- sobj$classV2
+levels(sobj$classV3)[2] <- "Macrophages"
+```
+
+```{r}
+saveRDS(sobj,"../Documents/Immunocytes0321.rds")
+create_loupe_from_seurat(sobj,output_name  = "../Documents/Immunocytes0321",force = TRUE)
+```
+

@@ -1,0 +1,34 @@
+##DEG
+```{r}
+dir.create("../Documents/")
+```
+##DEG
+```{r}
+clustermarkers <- list()
+clustermarkers_top30 <- list()
+library(openxlsx)
+
+for (i in seq(0.1,1,0.1)) {
+  cat("RNA_snn_res.",i,"\n")
+Idents(sobj) <- paste0("RNA_snn_res.",i)
+  celltype <- paste0("RNA_snn_res.",i)
+  sobj.Markers<-FindAllMarkers(sobj,only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+  sobj.Markers %>%
+    group_by(cluster) %>%
+    top_n(n = 30, wt = avg_log2FC) -> top30
+      
+    clustermarkers[[celltype]]<-sobj.Markers
+    clustermarkers_top30[[celltype]]<-top30
+    
+    
+      write.xlsx(clustermarkers,file =paste0("../Documents/","marker.xlsx") ,sheetName=names(clustermarkers))
+  write.xlsx(clustermarkers_top30,file =paste0("../Documents/","marker_top30.xlsx") ,sheetName=names(clustermarkers_top30))
+  }
+
+```
+
+```{r}
+library(loupeR)
+create_loupe_from_seurat(sobj,output_name  = "../Documents/Immunocytes",force = TRUE)
+```
+
